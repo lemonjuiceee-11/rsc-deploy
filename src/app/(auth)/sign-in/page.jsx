@@ -30,11 +30,14 @@ function SignIn() {
     };
 
     useEffect(() => {
-        const jwt = sessionStorage.getItem('jwt');
-        if (jwt) {
-            router.push('/')
+        if (typeof window !== "undefined") {
+            const jwt = sessionStorage.getItem('jwt');
+            if (jwt) {
+                router.push('/');
+            }
         }
     }, []);
+    
 
     const onSignIn = () => {
         setLoader(true);

@@ -31,13 +31,15 @@ function CreateAccount() {
 
     }
   };
-    useEffect(()=>{
-        const jwt=sessionStorage.getItem('jwt');
-        if(jwt)
-        {
-            router.push('/')
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+        const jwt = sessionStorage.getItem('jwt');
+        if (jwt) {
+            router.push('/');
         }
-    },[])
+    }
+}, []);
+
     const onCreateAccount=()=>{
         setLoader(true)
         GlobalApi.registerUser(username,email,password).then(resp=>{

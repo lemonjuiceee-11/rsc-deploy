@@ -53,24 +53,37 @@ function Checkout() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!jwt) {
-      router.push('/sign-in');
+    if (typeof window !== "undefined") {
+      const jwt = sessionStorage.getItem('jwt');
+  
+      if (!jwt) {
+        router.push('/sign-in');
+        return;
+      }
+  
+      getCartItems();
     }
-    getCartItems();
   }, [updateCart]);
-
+  
   const getCartItems = async () => {
-    const cartItemList_ = await GlobalApi.getCartItems(user.id, jwt);
-    setTotalCartItem(cartItemList_?.length);
-    setCartItemList(cartItemList_);
+    try {
+      const cartItemList_ = await GlobalApi.getCartItems(user.id, jwt);
+      setTotalCartItem(cartItemList_?.length);
+      setCartItemList(cartItemList_);
+    } catch (error) {
+      console.error("Error fetching cart items:", error);
+    }
   };
-
+  
   const onDeleteItem = (id) => {
     GlobalApi.deleteCartItem(id, jwt).then(() => {
       toast('Item removed!');
       getCartItems();
+    }).catch(error => {
+      console.error("Error deleting item:", error);
     });
   };
+  
 
   const onClearCart = async () => {
     const success = await GlobalApi.clearCart(user.id, jwt);

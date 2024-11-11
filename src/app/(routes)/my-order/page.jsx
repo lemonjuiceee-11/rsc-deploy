@@ -41,28 +41,33 @@ function MyOrder() {
   const [orderToReceive, setOrderToReceive] = useState(null);
 
   useEffect(() => {
-    if (!jwt) {
-      router.replace('/');
-      return;
-    }
-
-    const getMyOrder = async () => {
-      setLoading(true);
-      try {
-        const orderList_ = await GlobalApi.getMyOrder(user.id, jwt);
-        const sortedOrders = orderList_.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        setOrderList(sortedOrders);
-        setFilteredOrders(sortedOrders);
-      } catch (error) {
-        console.error("Error fetching orders:", error);
-      } finally {
-        setLoading(false);
+    if (typeof window !== 'undefined') { 
+      const jwt = sessionStorage.getItem('jwt');
+      
+      if (!jwt) {
+        router.replace('/');
+        return;
       }
-    };
-
-    getMyOrder();
-  }, [jwt, router, user.id]);
-
+  
+      const getMyOrder = async () => {
+        setLoading(true);
+        try {
+          const user = JSON.parse(sessionStorage.getItem('user')); 
+          const orderList_ = await GlobalApi.getMyOrder(user.id, jwt);
+          const sortedOrders = orderList_.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          setOrderList(sortedOrders);
+          setFilteredOrders(sortedOrders);
+        } catch (error) {
+          console.error("Error fetching orders:", error);
+        } finally {
+          setLoading(false);
+        }
+      };
+  
+      getMyOrder();
+    }
+  }, [router]);
+  
   const returnToStock = async (orderItems) => {
     for (const item of orderItems) {
       if (!item.productId) {
