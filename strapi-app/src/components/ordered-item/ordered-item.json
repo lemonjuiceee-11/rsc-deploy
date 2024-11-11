@@ -1,0 +1,27 @@
+{
+  "collectionName": "components_ordered_item_ordered_items",
+  "info": {
+    "displayName": "OrderedItem",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "quantity": {
+      "type": "biginteger"
+    },
+    "product": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::product.product"
+    },
+    "price": {
+      "type": "decimal"
+    },
+    "variation": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    }
+  }
+}
