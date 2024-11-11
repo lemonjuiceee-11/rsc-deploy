@@ -85,7 +85,7 @@ function SignIn() {
                     >
                         {loader ? <LoaderIcon className='animate-spin' /> : 'Sign In'}
                     </Button>
-                    <p>Don't have an account?
+                    <p>Don&apos;t have an account?
                         <Link href={'/create-account'} className='text-green-500'>
                             Click here to create a new account
                         </Link>

@@ -384,7 +384,7 @@ function MyOrder() {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Confirm Receive Order</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Are you sure you want to confirm that you've received this order?
+                            Are you sure you want to confirm that you&apos;ve received this order?
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
