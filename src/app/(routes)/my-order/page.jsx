@@ -20,6 +20,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { toast } from 'sonner'
+
 
 function MyOrder() {
   const jwt = sessionStorage.getItem('jwt');
@@ -30,15 +32,59 @@ function MyOrder() {
   const [filterStatus, setFilterStatus] = useState("All");
   const [loading, setLoading] = useState(false);
 
-  const [refundReason, setRefundReason] = useState('');
-  const [refundMethod, setRefundMethod] = useState('GCash');
-  const [refundImage, setRefundImage] = useState(null);
-  const [selectedOrderId, setSelectedOrderId] = useState(null);
-  const [isReturnRefundDialogOpen, setReturnRefundDialogOpen] = useState(false);
+
   const [isCancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [orderToCancel, setOrderToCancel] = useState(null);
   const [isReceiveDialogOpen, setReceiveDialogOpen] = useState(false);
   const [orderToReceive, setOrderToReceive] = useState(null);
+  const [isRefundDialogOpen, setRefundDialogOpen] = useState(false);
+  const [orderToRefund, setOrderToRefund] = useState(null);
+
+  const [refundFields, setRefundFields] = useState({
+    refund_reason: "",
+    refund_method: "",
+    account_number: "",
+    refund_proof: null, 
+    status: "Returns",
+  });
+  
+  const handleInputChange = (field, value) => {
+    setRefundFields((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleEditRefundFields = async (orderId) => {
+    try {
+      await GlobalApi.updateRefundFields(orderId, refundFields, jwt);
+      toast("Request sent successfully");
+      setOrderList((prevOrders) =>
+        prevOrders.map((order) =>
+          order.id === orderId ? { ...order, ...refundFields, status: "Returns" } : order
+        )
+      );
+      filterOrders(filterStatus);
+    } catch (error) {
+      console.error("Error updating refund fields:", error);
+    }
+  };
+  
+  const [selectedOrderId, setSelectedOrderId] = useState(null); // Define state for selected order ID
+// Use the selected order to set the form fields
+useEffect(() => {
+  if (selectedOrderId) {
+    // Find the selected order from the order list
+    const selectedOrder = orderList.find(order => order.id === selectedOrderId);
+    if (selectedOrder) {
+      setReason(selectedOrder.refund_reason || '');
+      setRefundMethod(selectedOrder.refund_method || 'GCash');
+      setAccountNumber(selectedOrder.account_number || '');
+    }
+  }
+}, [selectedOrderId, orderList]);
+
+
 
   useEffect(() => {
     if (typeof window !== 'undefined') { 
@@ -90,6 +136,7 @@ function MyOrder() {
       await GlobalApi.cancelOrder(orderId, jwt);
       await returnToStock(orderItems);
 
+      toast("Order Cancelled");
       setOrderList((prevOrders) =>
         prevOrders.map(order =>
           order.id === orderId ? { ...order, status: "Cancelled" } : order
@@ -112,31 +159,6 @@ function MyOrder() {
     }
   };
 
-  const handleReturnRefund = async () => {
-    if (!refundReason || !refundMethod || !refundImage) {
-      alert("Please fill all fields and upload an image.");
-      return;
-    }
-
-    try {
-      console.log("Processing return/refund", {
-        orderId: selectedOrderId,
-        refundReason,
-        refundMethod,
-        refundImage,
-      });
-
-      await GlobalApi.processReturnRefund(selectedOrderId, jwt, refundReason, refundMethod, refundImage);
-
-      setRefundReason('');
-      setRefundMethod('GCash');
-      setRefundImage(null);
-      setSelectedOrderId(null);
-      setReturnRefundDialogOpen(false);
-    } catch (error) {
-      console.error("Error processing return/refund:", error);
-    }
-  };
 
   const receiveOrder = async (orderId, orderItems) => {
     setLoading(true);
@@ -144,6 +166,7 @@ function MyOrder() {
 
       await GlobalApi.receiveOrder(orderId, jwt); 
 
+      toast("Order Received successfully");
       setOrderList((prevOrders) =>
         prevOrders.map((order) =>
           order.id === orderId ? { ...order, status: "Completed" } : order
@@ -157,6 +180,36 @@ function MyOrder() {
     }
   };
 
+  const refundOrder = async (orderId, orderItems) => {
+    setLoading(true);
+    try {
+      // Call the API to process the refund
+      const refundResponse = await GlobalApi.refundOrder(orderId, jwt);
+  
+      // If refund is successful, update the order status to 'Returns'
+      if (refundResponse.success) {
+        // Update the status in the local order list
+        toast("Request sent successfully");
+        setOrderList((prevOrders) =>
+          prevOrders.map((order) =>
+            order.id === orderId ? { ...order, status: "Returns" } : order
+          )
+        );
+        
+        // Optionally: Filter orders based on current filter status
+        filterOrders(filterStatus);
+      } else {
+        console.error("Refund failed:", refundResponse.message);
+      }
+    } catch (error) {
+      console.error("Error refunding order:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  
+  
   return (
     <div>
       <h2 className="p-3 bg-primary text-3xl font-bold text-center text-white mb-3">My Orders</h2>
@@ -165,7 +218,7 @@ function MyOrder() {
 
         {/* Status Buttons */}
         <div className="flex gap-2 flex-wrap mt-4">
-          {["All", "Pending", "Confirmed", "To Ship", "Delivered", "Completed", "Cancelled"].map((status, index) => {
+          {["All", "Pending", "Confirmed", "To Ship", "Delivered", "Completed", "Cancelled", "Returns"].map((status, index) => {
             let buttonStyle = "px-4 py-2 font-semibold rounded w-full sm:w-auto ";
             switch (status) {
               case "All":
@@ -188,6 +241,9 @@ function MyOrder() {
                 break;
               case "Cancelled":
                 buttonStyle += filterStatus === status ? "bg-red-500 text-white" : "bg-red-300 text-gray-700";
+                break;
+              case "Returns":
+                buttonStyle += filterStatus === status ? "bg-violet-500 text-white" : "bg-violet-300 text-gray-700";
                 break;
               default:
                 buttonStyle += "bg-gray-300 text-gray-700";
@@ -230,6 +286,9 @@ function MyOrder() {
               case "Cancelled":
                 bgColor = "bg-red-200";
                 break;
+              case "Returns":
+                bgColor = "bg-violet-200";
+                break;
               default:
                 bgColor = "bg-gray-200";
             }
@@ -246,12 +305,22 @@ function MyOrder() {
                       <span>{moment(item?.createdAt).format('DD/MMM/yyyy')}</span>
                     </h2>
                     <h2>
-                      <span className="font-bold mr-2">Status:</span>
-                      <span>{item?.status}</span>
-                    </h2>
-                    <h2>
                       <span className="font-bold mr-2">Total Amount:</span>
                       <span>{item?.totalOrderAmount}</span>
+                    </h2>
+                    <h2>
+                      <span className="font-bold mr-2">Status:</span>
+                      <span>
+                        {item?.status}
+                        {/* Display status message based on the order status */}
+                        {item?.status === 'Pending' && <span className="text-gray-500 ml-2 text-xs">(Waiting for seller to confirm)</span>}
+                        {item?.status === 'Confirmed' && <span className="text-gray-500 ml-2 text-xs">(Processing for shipping)</span>}
+                        {item?.status === 'To Ship' && <span className="text-gray-500 ml-2 text-xs">(Package on the way)</span>}
+                        {item?.status === 'Delivered' && <span className="text-gray-500 ml-2 text-xs">(Successfully delivered)</span>}
+                        {item?.status === 'Completed' && <span className="text-gray-500 ml-2 text-xs">(Transaction Completed)</span>}
+                        {item?.status === 'Cancelled' && <span className="text-gray-500 ml-2 text-xs">(Transaction Cancelled)</span>}
+                        {item?.status === 'Returns' && <span className="text-gray-500 ml-2 text-xs">(Return/Refund requested)</span>}
+                      </span>
                     </h2>
                   </div>
                 </CollapsibleTrigger>
@@ -260,6 +329,7 @@ function MyOrder() {
                     <MyOrderItem orderItem={order} key={index_} />
                   ))}
                   <div className="ml-[1050px] flex gap-2">
+
                     {/* Cancel Order Button */}
                     {(item.status === "Pending" || item.status === "Confirmed") && (
                     <AlertDialog open={isCancelDialogOpen} onOpenChange={setCancelDialogOpen}>
@@ -300,75 +370,102 @@ function MyOrder() {
                     </AlertDialog>)}
 
                     {/* Return/Refund Button */}
-                    {(item.status === "Delivered" || item.status === "Completed") && (
-                      <AlertDialog>
+                      {(item.status === "Delivered" || item.status === "Completed") && (
+                        <AlertDialog open={isRefundDialogOpen} onOpenChange={setRefundDialogOpen}>
                         <AlertDialogTrigger>
                           <button
                             className={`px-4 py-2 mt-2 text-sm rounded font-bold text-white ${
-                              item.status === "Cancelled" || item.status === "Confirmed" || item.status === "To Ship" || item.status === "Pending" ? 'bg-gray-400 text-gray-600 cursor-not-allowed' : 'bg-blue-500 text-white'
+                              item.status === "Delivered" || item.status === "Completed"
+                                ? "bg-violet-500 hover:bg-violet-600"
+                                : "bg-gray-400 cursor-not-allowed"
                             }`}
-                            disabled={item.status === "Cancelled" || item.status === "To Ship" || item.status === "Pending" || item.status === "Confirmed"}
                             onClick={() => {
-                              setSelectedOrderId(item.id);
-                              setReturnRefundDialogOpen(true); // Open the Return/Refund dialog
+                              setOrderToRefund(item);
+                              setRefundFields({
+                                refund_reason: item.refund_reason || "",
+                                refund_method: item.refund_method || "",
+                                account_number: item.account_number || "",
+                                refund_proof: null, // Initialize refund_proof as null
+                              });
                             }}
                           >
-                            Return/Refund
+                            Refund Order
                           </button>
                         </AlertDialogTrigger>
-                        <AlertDialogContent className="max-w-xl max-h-[80vh]">
+                        <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle className='text-2xl'>
-                              Return/Refund Request
-                            </AlertDialogTitle>
-                            <AlertDialogDescription className='text-xl'>
-                              Please provide the details for the return/refund request.
+                            <AlertDialogTitle>Edit Refund Fields</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Update the refund details for this order.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
+                          <div className="flex flex-col space-y-4">
+                            {/* Refund Reason */}
+                            <textarea
+                              className="border rounded px-4 py-2 w-full"
+                              placeholder="Refund Reason"
+                              value={refundFields.refund_reason}
+                              onChange={(e) => handleInputChange("refund_reason", e.target.value)}
+                            />
+                            
+                            {/* Refund Method */}
+                            <select
+                              className="border rounded px-4 py-2 w-full"
+                              value={refundFields.refund_method}
+                              onChange={(e) => handleInputChange("refund_method", e.target.value)}
+                            >
+                              <option value="">Select Refund Method</option>
+                              <option value="Gcash">Gcash</option>
+                              <option value="Bank Transfer">Bank Transfer</option>
+                            </select>
+                            
+                            {/* Account Number */}
+                            <input
+                              type="text"
+                              className="border rounded px-4 py-2 w-full"
+                              placeholder="Account Number"
+                              value={refundFields.account_number}
+                              onChange={(e) => handleInputChange("account_number", e.target.value)}
+                            />
+                            
+                            {/* Upload refund_proof */}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="border rounded px-4 py-2 w-full"
+                              onChange={(e) => {
+                                const file = e.target.files[0];
+                                setRefundFields((prev) => ({
+                                  ...prev,
+                                  refund_proof: file, // Save the uploaded file
+                                }));
+                              }}
+                            />
+                            {refundFields.refund_proof && (
+                              <p className="text-sm text-gray-600">
+                                Uploaded file: {refundFields.refund_proof.name}
+                              </p>
+                            )}
+                          </div>
                           <AlertDialogFooter>
-                            <div className="flex flex-col gap-2 mr-8">
-                              <textarea 
-                                placeholder="Reason for return/refund"
-                                value={refundReason}
-                                onChange={(e) => setRefundReason(e.target.value)}
-                                className="p-2 border rounded h-32"
-                              />
-                              <div>
-                                <label>Refund Method:</label>
-                                <select 
-                                  value={refundMethod} 
-                                  onChange={(e) => setRefundMethod(e.target.value)}
-                                  className="p-2 border rounded"
-                                >
-                                  <option value="GCash">GCash</option>
-                                  <option value="Bank">Bank Account</option>
-                                </select>
-                              </div>
-                              <div>
-                                <label>Account Number:</label>
-                                <input 
-                                  type="number" 
-                                  placeholder="Enter your account number"
-                                  className="p-2 border rounded"
-                                />
-                              </div>
-                              <div>
-                                <label>Upload Proof:</label>
-                                <input 
-                                  type="file" 
-                                  onChange={(e) => setRefundImage(e.target.files[0])}
-                                  className="p-2 border rounded"
-                                />
-                              </div>
-                              <AlertDialogAction onClick={handleReturnRefund}>
-                                Submit Request
-                              </AlertDialogAction>
-                              <AlertDialogCancel onClick={() => setReturnRefundDialogOpen(false)}>No</AlertDialogCancel>
-                            </div>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => {
+                                if (orderToRefund) {
+                                  refundOrder(orderToRefund.id, orderToRefund.orderItemList);
+                                }
+                                setCancelDialogOpen(false);
+                                handleEditRefundFields(orderToRefund.id);
+                                setRefundDialogOpen(false);
+                              }}
+                            >
+                              Submit Request
+                            </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
-                    )}
+                      )}
+
                     {/* Receive Order Button */}
                     {(item.status === "Delivered") && (
                     <AlertDialog open={isReceiveDialogOpen} onOpenChange={setReceiveDialogOpen}>

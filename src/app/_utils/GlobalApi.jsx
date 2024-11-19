@@ -4,8 +4,6 @@ const axiosClient=axios.create({
     baseURL:'http://192.168.0.105:1337/api'
 })
 
-const getCategory=()=>axiosClient.get('/categories?populate=*');
-
 const getSliders=()=>axiosClient.get('/sliders?populate=*').then(resp=>{
     return resp.data.data
 });
@@ -69,8 +67,6 @@ const getCartItems = (userId, jwt) =>
     });
 
     
-
-
 const deleteCartItem=(id,jwt)=>axiosClient.delete('/user-carts/'+id,
 {
     headers:{
@@ -98,6 +94,10 @@ const getMyOrder=(userId, jwt)=>axiosClient.get('/orders?filters[userId][$eq]='+
         variation:item.attributes.variation,
         paymentMethod:item.attributes.paymentMethod,
         address: item.attributes.address,
+        refund_reason: item.attributes.refund_reason,
+        refund_method: item.attributes.refund_method,
+        account_number : item.attributes.account_number,
+
     }));
 
     return orderList;
@@ -152,6 +152,18 @@ const receiveOrder = (orderId, jwt) => {
     });
 };
 
+const refundOrder = (orderId, jwt) => {
+    return axiosClient.put(`/orders/${orderId}`, {
+        data: {
+            status: "Returns"
+        }
+    }, {
+        headers: {
+            Authorization: 'Bearer ' + jwt
+        }
+    });
+};
+
 const getProductStock = (productId, jwt) => {
     return axiosClient.get(`/products/${productId}`, {
         headers: {
@@ -177,20 +189,40 @@ const getUser = (jwt) => {
 };
 
 const updateUser = (data, jwt) => {
-    console.log("Updating user with data:", data); // Log data for debugging
+    console.log("Updating user with data:", data); 
     return axiosClient.put('/users/me', data, {
         headers: {
-            Authorization: 'Bearer ' + jwt // Correctly include JWT for authentication
+            Authorization: 'Bearer ' + jwt 
         }
+    });
+};
+
+const updateRefundFields = (orderId, refundFields, jwt) => {
+    const formData = new FormData();
+
+    // Append refund fields to formData
+    formData.append('data', JSON.stringify({
+        refund_reason: refundFields.refund_reason,
+        refund_method: refundFields.refund_method,
+        account_number: refundFields.account_number,
+    }));
+
+    // Append refund_proof file if it exists
+    if (refundFields.refund_proof) {
+        formData.append('files.refund_proof', refundFields.refund_proof);
+    }
+
+    return axiosClient.put(`/orders/${orderId}`, formData, {
+        headers: {
+            Authorization: 'Bearer ' + jwt,
+            'Content-Type': 'multipart/form-data',
+        },
     });
 };
 
 
 
-
-
 export default{
-    getCategory,
     getSliders,
     getBrandList,
     getAllProducts,
@@ -209,5 +241,7 @@ export default{
     getProductStock,
     getUser,
     updateUser,
+    refundOrder,
+    updateRefundFields,
 
 }

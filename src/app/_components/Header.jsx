@@ -28,7 +28,7 @@ import CartItemList from './CartItemList';
 import { toast } from 'sonner';
 
 function Header() {
-    const [categoryList, setCategoryList] = useState([]);
+    const [username, setUsername] = useState(''); // State to hold the username
     const isLogin = sessionStorage.getItem('jwt') ? true : false;
     const user = JSON.parse(sessionStorage.getItem('user'));
     const jwt = sessionStorage.getItem('jwt');
@@ -39,20 +39,18 @@ function Header() {
     const [subtotal, setSubTotal] = useState(0);
 
     useEffect(() => {
-        getCategoryList();
         getCartItems();
+        if (jwt) {
+            GlobalApi.getUser(jwt).then(user => {
+                setUsername(user.username); // Set the username
+            });
+        }
     }, []);
 
     useEffect(() => {
-   
         getCartItems();
     }, [updateCart]);
 
-    const getCategoryList = () => {
-        GlobalApi.getCategory().then(resp => {
-            setCategoryList(resp.data.data);
-        });
-    };
 
     const getCartItems = async () => {
         if (user) {
@@ -140,9 +138,12 @@ function Header() {
                     ) : (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <CircleUserRound
-                                    className="bg-green-100 p-2 mr-3 rounded-full cursor-pointer text-primary h-16 w-16"
-                                />
+                                <div className="flex flex-col items-center">
+                                    <CircleUserRound
+                                        className="bg-green-100 p-2 mr-3 rounded-full cursor-pointer text-primary h-16 w-16"
+                                    />
+                                    <span className="text-white text-xl mr-3">{username}</span> {/* Display username */}
+                                </div>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
                                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
@@ -164,4 +165,3 @@ function Header() {
 }
 
 export default Header;
- 

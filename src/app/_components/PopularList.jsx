@@ -2,7 +2,14 @@ import React from 'react';
 import ProductItem from './ProductItem';
 
 function PopularList({ popularList }) {
-  const sortedPopularList = popularList?.slice().sort((a, b) => a.id - b.id);
+  // Filter out products with 0 stock, then sort by stock in ascending order
+  const sortedPopularList = popularList
+    ?.filter(product => product.attributes.stock > 0) // Exclude products with 0 stock
+    .sort((a, b) => {
+      const stockA = a.attributes.stock;
+      const stockB = b.attributes.stock;
+      return stockA - stockB;
+    });
 
   return (
     <div className="mt-5">

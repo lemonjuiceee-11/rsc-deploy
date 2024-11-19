@@ -95,6 +95,7 @@ function Checkout() {
     }
   };
 
+
   useEffect(() => {
     let total = 0;
     cartItemList.forEach(element => {
@@ -264,7 +265,8 @@ function Checkout() {
                   <SelectValue placeholder="Select Payment Method" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Cash on Delivery">Cash on Delivery</SelectItem>
+                <SelectItem value="Cash on Delivery" disabled={parseFloat(calculateTotalAmount()) > 2000}>Cash on Delivery</SelectItem>
+                  <SelectItem value="Gcash">Gcash</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -273,7 +275,7 @@ function Checkout() {
 
           <div className='p-4 bg-white shadow rounded-lg'>
             <h2 className='font-bold text-2xl mb-4'>Your Order</h2>
-            <CartItemList cartItemList={cartItemList} onDeleteItem={onDeleteItem} />
+            <CartItemList cartItemList={cartItemList} onDeleteItem={onDeleteItem} onClearCart={(onClearCart)}/>
             <div className='mt-4'>
               <Select onValueChange={applyVoucher} defaultValue="0">
                 <SelectTrigger className="w-full">

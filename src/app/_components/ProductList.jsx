@@ -7,7 +7,15 @@ function ProductList({ productList }) {
   const [sortOption, setSortOption] = useState('name-asc');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedCategory, setSelectedCategory] = useState(''); // New state for category filter
   const productsPerPage = 16;
+
+  const categories = [
+    'Health Supplements',
+    'Home Remedies',
+    'Personal Care',
+    'Pet Care'
+  ];
 
   const sortedProducts = productList?.slice().sort((a, b) => {
     switch (sortOption) {
@@ -24,17 +32,19 @@ function ProductList({ productList }) {
     }
   });
 
+  const filteredByCategory = sortedProducts?.filter(product => {
+    if (!selectedCategory) return true; // If no category is selected, show all products
+    return product.attributes.category?.toLowerCase() === selectedCategory.toLowerCase();
+  });
 
-  const filteredProducts = sortedProducts?.filter(product =>
+  const filteredProducts = filteredByCategory?.filter(product =>
     product.attributes.slug && product.attributes.slug.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
 
   const inStockProducts = filteredProducts?.filter(product => product.attributes.stock > 0) || [];
   const outOfStockProducts = filteredProducts?.filter(product => product.attributes.stock === 0) || [];
   
   const combinedProducts = [...inStockProducts, ...outOfStockProducts];
-
 
   const indexOfLastProduct = currentPage * productsPerPage;
   const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
@@ -46,6 +56,10 @@ function ProductList({ productList }) {
 
   const handleSearchChange = (event) => {
     setSearchQuery(event.target.value);
+  };
+
+  const handleCategoryChange = (event) => {
+    setSelectedCategory(event.target.value);
   };
 
   const nextPage = () => {
@@ -61,6 +75,7 @@ function ProductList({ productList }) {
   console.log('Current Sort Option:', sortOption);
   console.log('Search Query:', searchQuery);
   console.log('Filtered Products:', filteredProducts);
+  console.log('Selected Category:', selectedCategory);
   console.log('Current Page:', currentPage);
 
   return (
@@ -79,8 +94,20 @@ function ProductList({ productList }) {
         <Search className='h-8 w-8 text-primary p-1 rounded-r cursor-pointer' />
       </div>
 
-      <div className="mt-4">
-        <label htmlFor="sortOptions" className="mr-2">Sort by:</label>
+      <div className="mt-4 flex items-center">
+        <label htmlFor="categorySelect" className="mr-2">Filter by Category:</label>
+        <select
+          id="categorySelect"
+          value={selectedCategory}
+          onChange={handleCategoryChange}
+          className="border border-gray-300 rounded px-3 py-1"
+        >
+          <option value="">All Categories</option>
+          {categories.map((category, index) => (
+            <option key={index} value={category}>{category}</option>
+          ))}
+        </select>
+        <label htmlFor="sortOptions" className="ml-5 mr-2">Sort by:</label>
         <select id="sortOptions" value={sortOption} onChange={handleSortChange}>
           <option value="name-asc">Name (A-Z)</option>
           <option value="name-desc">Name (Z-A)</option>
